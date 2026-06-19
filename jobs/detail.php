@@ -59,8 +59,14 @@ include '../includes/header.php';
                         <td style="border:none;"><?= htmlspecialchars($job['CATEGORY_NAME'] ?? '-') ?></td></tr>
                     <tr><td style="border:none; color:#666;"><strong>Total Vacancies</strong></td>
                         <td style="border:none;"><strong><?= $job['TOTAL_VACANCIES'] ?></strong></td></tr>
-                    <tr><td style="border:none; color:#666;"><strong>Salary</strong></td>
-                        <td style="border:none;"><?= htmlspecialchars($job['SALARY_RANGE'] ?? 'As per govt. policy') ?></td></tr>
+                    <tr><td style="border:none; color:#666;"><strong>Salary Range</strong></td>
+                        <td style="border:none;">
+                            <?php if ($job['SALARY_MIN'] || $job['SALARY_MAX']): ?>
+                                ৳<?= number_format($job['SALARY_MIN'], 0) ?> - ৳<?= number_format($job['SALARY_MAX'], 0) ?>
+                            <?php else: ?>
+                                <?= htmlspecialchars($job['SALARY_RANGE'] ?? 'As per govt. policy') ?>
+                            <?php endif; ?>
+                        </td></tr>
                     <tr><td style="border:none; color:#666;"><strong>Location</strong></td>
                         <td style="border:none;"><?= htmlspecialchars($job['LOCATION'] ?? 'Bangladesh') ?></td></tr>
                     <tr><td style="border:none; color:#666;"><strong>Application Fee</strong></td>
@@ -72,10 +78,34 @@ include '../includes/header.php';
                 </table>
             </div>
 
-            <?php if ($job['REQUIREMENTS']): ?>
+            <?php if ($job['DESCRIPTION']): ?>
             <div class="card">
-                <div class="card-title">Requirements / Job Description</div>
-                <div style="line-height:1.8; font-size:14px; white-space:pre-wrap;"><?= htmlspecialchars($job['REQUIREMENTS']) ?></div>
+                <div class="card-title">Job Description</div>
+                <div style="line-height:1.8; font-size:14px; white-space:pre-wrap;"><?= htmlspecialchars($job['DESCRIPTION']) ?></div>
+            </div>
+            <?php endif; ?>
+
+            <?php if ($job['EDUCATION_REQUIREMENT'] || $job['EXPERIENCE_REQUIREMENT'] || $job['REQUIREMENTS']): ?>
+            <div class="card">
+                <div class="card-title">Requirements &amp; Eligibility</div>
+                <div style="line-height:1.8; font-size:14px;">
+                    <?php if ($job['EDUCATION_REQUIREMENT']): ?>
+                        <p>🎓 <strong>Education:</strong> <?= htmlspecialchars($job['EDUCATION_REQUIREMENT']) ?></p>
+                    <?php endif; ?>
+                    <?php if ($job['EXPERIENCE_REQUIREMENT']): ?>
+                        <p>💼 <strong>Experience:</strong> <?= htmlspecialchars($job['EXPERIENCE_REQUIREMENT']) ?></p>
+                    <?php endif; ?>
+                    <?php if ($job['REQUIREMENTS']): ?>
+                        <div style="white-space:pre-wrap; margin-top:10px; border-top:1px solid #eee; padding-top:10px;"><?= htmlspecialchars($job['REQUIREMENTS']) ?></div>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <?php if ($job['INSTRUCTIONS']): ?>
+            <div class="card">
+                <div class="card-title">Application Instructions</div>
+                <div style="line-height:1.8; font-size:14px; white-space:pre-wrap;"><?= htmlspecialchars($job['INSTRUCTIONS']) ?></div>
             </div>
             <?php endif; ?>
         </div>

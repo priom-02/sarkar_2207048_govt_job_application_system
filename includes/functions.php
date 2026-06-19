@@ -25,6 +25,11 @@ function dbFetchAll($conn, $sql, $binds = []) {
     }
     $rows = [];
     while ($row = oci_fetch_assoc($stmt)) {
+        foreach ($row as $key => $val) {
+            if (is_object($val) && get_class($val) === 'OCILob') {
+                $row[$key] = $val->read($val->size() > 0 ? $val->size() : 8000) ?: '';
+            }
+        }
         $rows[] = $row;
     }
     oci_free_statement($stmt);
@@ -50,6 +55,13 @@ function dbFetchOne($conn, $sql, $binds = []) {
         return null;
     }
     $row = oci_fetch_assoc($stmt);
+    if ($row) {
+        foreach ($row as $key => $val) {
+            if (is_object($val) && get_class($val) === 'OCILob') {
+                $row[$key] = $val->read($val->size() > 0 ? $val->size() : 8000) ?: '';
+            }
+        }
+    }
     oci_free_statement($stmt);
     return $row ?: null;
 }

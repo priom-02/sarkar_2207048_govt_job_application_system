@@ -31,11 +31,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $catId       = intval($_POST['category_id']  ?? 0);
     $vacancies   = intval($_POST['total_vacancies'] ?? 0);
     $deadline    = trim($_POST['deadline']        ?? '');
-    $salary      = trim($_POST['salary_range']    ?? '');
+    $sal_min     = floatval($_POST['salary_min']   ?? 0);
+    $sal_max     = floatval($_POST['salary_max']   ?? 0);
     $location    = trim($_POST['location']        ?? '');
     $fee         = floatval($_POST['application_fee'] ?? 0);
     $description = trim($_POST['description']    ?? '');
-    $requirements= trim($_POST['requirements']   ?? '');
+    $edu_req     = trim($_POST['education_requirement'] ?? '');
+    $exp_req     = trim($_POST['experience_requirement'] ?? '');
     $instructions= trim($_POST['instructions']   ?? '');
     $status      = ($_POST['action'] ?? '') === 'publish' ? 'published' : 'draft';
 
@@ -43,17 +45,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Job title, number of vacancies, and deadline are required.';
     } else {
         $publishedAt = $status === 'published' ? "SYSDATE" : "NULL";
-        $ok = dbExecute($conn,
-            "INSERT INTO job_circulars (department_id, category_id, job_title, total_vacancies, deadline,
-                salary_range, location, application_fee, description, requirements, instructions, status, published_at)
-             VALUES (:dept_id, :cat_id, :title, :vacancies, TO_DATE(:deadline,'YYYY-MM-DD'),
-                :salary, :location, :fee, :description, :requirements, :instructions, :status,
-                " . $publishedAt . ")",
-            [':dept_id' => $deptId, ':cat_id' => $catId ?: null, ':title' => $title,
-             ':vacancies' => $vacancies, ':deadline' => $deadline, ':salary' => $salary,
-             ':location' => $location, ':fee' => $fee, ':description' => $description,
-             ':requirements' => $requirements, ':instructions' => $instructions, ':status' => $status]
-        );
+        
+        $sql = "INSERT INTO job_circulars (
+                    department_id, category_id, job_title, total_vacancies, deadline,
+                    salary_min, salary_max, location, application_fee, description, 
+                    education_requirement, experience_requirement, instructions, status, published_at,
+                    salary_range, requirements, application_deadline
+                ) VALUES (
+                    :dept_id, :cat_id, :title, :vacancies, TO_DATE(:deadline,'YYYY-MM-DD'),
+                    :sal_min, :sal_max, :location, :fee, :description, 
+                    :edu_req, :exp_req, :instructions, :status, " . $publishedAt . ",
+                    :sal_range, :reqs, TO_DATE(:deadline_alt,'YYYY-MM-DD')
+                )";
+
+        // Maintain compatibility with both sets of columns
+        $salaryRangeText = "৳" . number_format($sal_min, 0) . " - ৳" . number_format($sal_max, 0);
+        $requirementsText = "Education: " . $edu_req . "\nExperience: " . $exp_req;
+
+        $ok = dbExecute($conn, $sql, [
+            ':dept_id'      => $deptId,
+            ':cat_id'       => $catId ?: null,
+            ':title'        => $title,
+            ':vacancies'    => $vacancies,
+            ':deadline'     => $deadline,
+            ':sal_min'      => $sal_min,
+            ':sal_max'      => $sal_max,
+            ':location'     => $location,
+            ':fee'          => $fee,
+            ':description'  => $description,
+            ':edu_req'      => $edu_req,
+            ':exp_req'      => $exp_req,
+            ':instructions' => $instructions,
+            ':status'       => $status,
+            ':sal_range'    => $salaryRangeText,
+            ':reqs'         => $requirementsText,
+            ':deadline_alt' => $deadline
+        ]);
 
         if ($ok) {
             oci_commit($conn);
@@ -144,20 +171,26 @@ include '../includes/header.php';
                     <div class="row">
                         <div class="col-6">
                             <div class="form-group">
-                                <label>Salary Range</label>
-                                <input type="text" name="salary_range" class="form-control"
-                                       placeholder="e.g. 25,000 - 35,000 BDT"
-                                       value="<?= htmlspecialchars($_POST['salary_range'] ?? '') ?>">
+                                <label>Minimum Salary (৳)</label>
+                                <input type="number" name="salary_min" class="form-control" required
+                                       placeholder="e.g. 25000"
+                                       value="<?= htmlspecialchars($_POST['salary_min'] ?? '') ?>">
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="form-group">
-                                <label>Job Location</label>
-                                <input type="text" name="location" class="form-control"
-                                       placeholder="e.g. Dhaka, Bangladesh"
-                                       value="<?= htmlspecialchars($_POST['location'] ?? '') ?>">
+                                <label>Maximum Salary (৳)</label>
+                                <input type="number" name="salary_max" class="form-control" required
+                                       placeholder="e.g. 35000"
+                                       value="<?= htmlspecialchars($_POST['salary_max'] ?? '') ?>">
                             </div>
                         </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Job Location</label>
+                        <input type="text" name="location" class="form-control"
+                               placeholder="e.g. Dhaka, Bangladesh"
+                               value="<?= htmlspecialchars($_POST['location'] ?? '') ?>">
                     </div>
                 </div>
 
@@ -169,9 +202,16 @@ include '../includes/header.php';
                                   placeholder="Describe the role, responsibilities, and duties..."><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
                     </div>
                     <div class="form-group">
-                        <label>Requirements / Eligibility</label>
-                        <textarea name="requirements" class="form-control" rows="5"
-                                  placeholder="Educational qualifications, experience, skills needed..."><?= htmlspecialchars($_POST['requirements'] ?? '') ?></textarea>
+                        <label>Education Requirement</label>
+                        <input type="text" name="education_requirement" class="form-control"
+                               placeholder="e.g. B.Sc in Computer Science, HSC, etc."
+                               value="<?= htmlspecialchars($_POST['education_requirement'] ?? '') ?>">
+                    </div>
+                    <div class="form-group">
+                        <label>Experience Requirement</label>
+                        <input type="text" name="experience_requirement" class="form-control"
+                               placeholder="e.g. At least 2 years in software development"
+                               value="<?= htmlspecialchars($_POST['experience_requirement'] ?? '') ?>">
                     </div>
                     <div class="form-group">
                         <label>Application Instructions</label>
